@@ -1,6 +1,13 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api";
+// Use environment variable if available, otherwise fallback to defaults
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (window.location.hostname === "localhost"
+    ? "http://localhost:5000/api"
+    : "https://dine-eats-backend.vercel.app/api");
+
+console.log("Using API URL:", API_URL);
 
 // Create axios instance
 const api = axios.create({

@@ -18,7 +18,13 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", // Allow all origins
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 // Serve static files from the public directory
@@ -96,3 +102,6 @@ process.on("unhandledRejection", (err) => {
   console.log(`Error: ${err.message}`);
   // Log the error but don't exit process
 });
+
+// Export the app for serverless environments
+module.exports = app;
