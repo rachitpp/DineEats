@@ -1,150 +1,233 @@
-# Restaurant Ordering System
+# DineEats 🍔
 
-A full-stack restaurant ordering system that allows customers to browse a menu, add items to a cart, place pickup orders, and view order history.
+I built this food ordering app to make it easy for customers to browse a menu, order food, and track their order history. The project combines a React frontend with a dual-database backend (MongoDB + PostgreSQL).
 
-## Features
+Check out the live demo: [DineEats on Netlify](https://dineeats.netlify.app)
 
-- Browse a categorized food menu (Appetizers, Main Course, Desserts, Drinks)
-- Add menu items to cart
-- View cart with calculated total price
-- Place pickup order with name and phone number
-- View order history based on phone number
+## What can you do with DineEats?
 
-## Tech Stack
+- Browse food categories (Appetizers, Main Course, Desserts, Drinks)
+- Search for specific food items
+- Add items to your cart (and change quantities)
+- View your total
+- Place your order
+- Get a nice confirmation page
+- Look up your past orders with your phone number
 
-### Frontend
-- React (with Vite)
+## How I built it
+
+For the frontend, I used:
+
+- React (hooks-based components)
 - React Router for navigation
-- Context API for global state management (cart)
-- Axios for API requests
+- Context API for the shopping cart
+- Some animations with Framer Motion
+- Tailwind CSS for styling (saved me tons of time!)
+- Axios for API calls
 
-### Backend
-- Node.js with Express.js
-- MongoDB for menu items (using Mongoose ODM)
-- PostgreSQL for users and orders (using Sequelize ORM)
-- RESTful API design
+On the backend side:
 
-## Project Structure
+- Node.js + Express
+- MongoDB for storing menu items
+- PostgreSQL for user info and orders
+- REST API pattern
+- CORS for frontend-backend communication
+
+## Project structure
+
+Nothing fancy here, pretty standard organization:
 
 ```
-restaurant-ordering-system/
-├── client/              # React frontend
-│   ├── src/
-│   │   ├── assets/      # Static assets
-│   │   ├── components/  # Reusable UI components
-│   │   ├── context/     # Global state using Context API
-│   │   ├── pages/       # Page components
-│   │   └── services/    # API service calls
-│   └── ...
+DineEats/
+├── frontend/
+│   └── src/
+│       ├── components/
+│       ├── context/
+│       ├── pages/
+│       └── services/
 │
-└── server/              # Express backend
-    ├── config/          # Database and other configurations
-    ├── controllers/     # Route controllers
-    ├── middleware/      # Custom middleware
-    ├── models/          # Database models (MongoDB & PostgreSQL)
-    └── routes/          # API routes
+└── server/
+    ├── config/
+    ├── controllers/
+    ├── middleware/
+    ├── models/
+    └── routes/
 ```
 
-## API Endpoints
+## Why I used two databases
 
-### Menu Items
-- `GET /api/menu-items` - Get all menu items (with optional category filtering)
-- `GET /api/menu-items/:id` - Get a single menu item
-- `POST /api/menu-items` - Create a new menu item (admin)
-- `PUT /api/menu-items/:id` - Update a menu item (admin)
-- `DELETE /api/menu-items/:id` - Delete a menu item (admin)
+This was actually one of the most interesting architecture decisions I made. I went with a dual-database approach:
 
-### Orders
-- `POST /api/orders` - Create a new order
-- `GET /api/orders/:id` - Get order by ID
-- `GET /api/orders/phone/:phoneNumber` - Get orders by phone number
-- `PUT /api/orders/:id` - Update order status (admin)
+### MongoDB for menu items
 
-## Setup Instructions
+I chose MongoDB for the menu because:
 
-### Prerequisites
+1. Menu items can be pretty flexible - some might have special options, others might have different attributes
+2. The document model works well for food items that fit into categories
+3. Most of what we do with the menu is read operations, where MongoDB shines
+4. It's easy to query by category or filter items
+5. When I need to add new menu item types later, I won't need to modify the database schema
+
+Here's what the MongoDB schema looks like in `menuItem.js`:
+
+- name (String)
+- description (String)
+- price (Number)
+- image (String, optional)
+- category (String: "Appetizers", "Main Course", "Desserts", "Drinks")
+- isAvailable (Boolean)
+
+### PostgreSQL for users and orders
+
+For the user and order data, I went with PostgreSQL because:
+
+1. Orders and users have a clear relationship that benefits from SQL's structure
+2. When someone places an order, I need transaction support to make sure everything goes through
+3. For order history, I often need to join user data with order details
+4. This data is consistent and structured
+5. I wanted to prevent problems like negative order totals, which PostgreSQL constraints help with
+
+The Sequelize models in `user.js` and `order.js` define these relationships.
+
+## API endpoints
+
+Here are the main API endpoints I implemented:
+
+### Menu endpoints
+
+- `GET /api/menu-items` - Gets all menu items
+  - You can filter with ?category=Desserts (for example)
+- `GET /api/menu-items/:id` - Gets one menu item
+- `POST /api/menu-items` - Adds a new menu item (admin only)
+- `PUT /api/menu-items/:id` - Updates a menu item
+- `DELETE /api/menu-items/:id` - Removes a menu item
+
+### Order endpoints
+
+- `POST /api/orders` - Places a new order
+- `GET /api/orders/:id` - Gets a specific order
+- `GET /api/orders/phone/:phoneNumber` - Gets all orders for a phone number
+- `PUT /api/orders/:id` - Updates order status
+
+## How to set it up locally
+
+### What you'll need
+
 - Node.js (v14+)
-- MongoDB
+- npm/yarn
+- MongoDB (local or Atlas)
 - PostgreSQL
 
-### Backend Setup
-1. Navigate to the server directory:
+### Getting the backend running
+
+1. Clone the repo
+
    ```
-   cd server
+   git clone https://github.com/yourusername/DineEats.git
+   cd DineEats
    ```
 
-2. Install dependencies:
+2. Install backend dependencies
+
    ```
+   cd server
    npm install
    ```
 
-3. Create a `.env` file in the server directory with the following variables:
+3. Create a `.env` file with:
+
    ```
    PORT=5000
-   MONGODB_URI=<your_mongodb_connection_string>
-   POSTGRES_URI=<your_postgres_connection_string>
-   JWT_SECRET=<random_string_for_jwt>
+   MONGODB_URI=mongodb://localhost:27017/dineeats
+   POSTGRES_URI=postgres://username:password@localhost:5432/dineeats
    NODE_ENV=development
    ```
 
-4. Start the server:
+   If you're using MongoDB Atlas, paste their connection string instead.
+
+4. Set up your database:
+
+   For MongoDB, just make sure it's running.
+
+   For PostgreSQL, create a database:
+
    ```
-   npm start
+   CREATE DATABASE dineeats;
    ```
-   
-   For development with auto-reload:
+
+   The app will create the tables automatically when it starts.
+
+5. Start the server
    ```
    npm run dev
    ```
 
-### Frontend Setup
-1. Navigate to the client directory:
+### Setting up the frontend
+
+1. Open a new terminal and go to the frontend folder
+
    ```
-   cd client
+   cd ../frontend
    ```
 
-2. Install dependencies:
+2. Install dependencies
+
    ```
    npm install
    ```
 
-3. Start the development server:
+3. Create a `.env` file with:
+
+   ```
+   VITE_API_URL=http://localhost:5000/api
+   ```
+
+4. Start the development server
+
    ```
    npm run dev
    ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+5. Open your browser to the URL shown (usually http://localhost:5173)
 
-## Database Design
+## Deployment notes
 
-### MongoDB (Menu Items)
-Flexible schema for menu items with various attributes like name, description, price, category, etc.
+I deployed the frontend on Netlify. If you want to do the same:
 
-### PostgreSQL (Users and Orders)
-- **Users**: Store customer information including name and phone number
-- **Orders**: Store order details with relationships to users and serialized menu items
+1. Build the frontend
 
-## Reasoning Behind Database Choices
+   ```
+   cd frontend
+   npm run build
+   ```
 
-- **MongoDB** is used for menu items because:
-  - Menu items have flexible attributes and may need different fields for different categories
-  - The schema may evolve over time as new item types are added
-  - Querying by category and attributes is common and well-served by MongoDB
+2. Upload the `dist` folder to Netlify
 
-- **PostgreSQL** is used for users and orders because:
-  - Orders have structured data with important relationships
-  - Order history needs reliable querying by user information
-  - Transactional integrity is important for order creation
+3. Add the backend URL in your Netlify environment variables
 
-## Deployment
+The backend can go on Render, Fly.io, Heroku, or Railway - just make sure you set up your environment variables there too.
 
-- Frontend: Deployed on Netlify
-- Backend: Can be deployed on Render, Fly.io, or Heroku
+## Testing the API
 
-## Future Enhancements
+I used Postman a lot during development. You can also use Insomnia or curl:
 
-- User authentication for admin features
-- Payment integration
-- Real-time order status updates
-- Email/SMS notifications
-- Admin dashboard for managing menu and orders
+```
+curl -X GET http://localhost:5000/api/menu-items
+```
+
+## What's next?
+
+I have a few ideas for future improvements:
+
+- Adding user logins
+- Building an admin dashboard
+- Real-time order tracking
+- Payment processing
+- Email confirmations
+- Maybe a mobile app someday
+
+Feel free to contribute if you have ideas!
+
+## License
+
+MIT
