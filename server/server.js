@@ -11,6 +11,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Track PostgreSQL connection status
+let postgresConnected = false;
+let mongoConnected = false;
+
 // Add a request logger middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
@@ -30,19 +34,20 @@ app.use(express.urlencoded({ extended: false }));
 // Serve static files from the public directory
 app.use("/static", express.static("public"));
 
-// Track PostgreSQL connection status
-let postgresConnected = false;
-
-// Connect to databases
-(async () => {
+// Setup database connections immediately but don't wait for them
+// This allows serverless functions to start handling requests right away
+const setupDatabases = async () => {
   try {
     // Try to connect to MongoDB
     await connectMongoDB();
+    mongoConnected = true;
+    console.log("MongoDB connected");
 
     // Try to connect to PostgreSQL, but don't stop the server if it fails
     try {
       await connectPostgreSQL();
       postgresConnected = true;
+      console.log("PostgreSQL connected");
 
       // Only sync Sequelize models if connection was successful
       try {
@@ -57,45 +62,54 @@ let postgresConnected = false;
         pgError
       );
     }
-
-    // Routes - only register routes after database connection attempts
-    app.use("/api/menu-items", require("./routes/menuItemRoutes"));
-
-    // Only register order routes if PostgreSQL is available
-    if (postgresConnected) {
-      app.use("/api/orders", require("./routes/orderRoutes"));
-    } else {
-      // Fallback route for orders if PostgreSQL is not available
-      app.use("/api/orders", (req, res) => {
-        res.status(503).json({
-          message:
-            "Order functionality is temporarily unavailable. Please try again later.",
-        });
-      });
-    }
-
-    // Basic route for testing
-    app.get("/", (req, res) => {
-      res.json({
-        message: "API is running...",
-        mongoDBConnected: true,
-        postgresConnected: postgresConnected,
-      });
-    });
-
-    // Error handling middleware
-    app.use(notFound);
-    app.use(errorHandler);
-
-    // Start the server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
   } catch (error) {
-    console.error(`Failed to start server: ${error.message}`);
-    process.exit(1);
+    console.error(`Database connection error: ${error.message}`);
   }
-})();
+};
+
+// Start database setup in background
+setupDatabases();
+
+// Basic route for testing
+app.get("/", (req, res) => {
+  res.json({
+    message: "API is running...",
+    mongoDBConnected: mongoConnected,
+    postgresConnected: postgresConnected,
+  });
+});
+
+// API routes
+app.use("/api/menu-items", require("./routes/menuItemRoutes"));
+
+// Orders route - with fallback if PostgreSQL isn't available
+if (postgresConnected) {
+  // If PostgreSQL is connected, use the order routes
+  app.use("/api/orders", require("./routes/orderRoutes"));
+} else {
+  // Fallback route for orders if PostgreSQL is not available
+  app.use("/api/orders", (req, res) => {
+    return res.status(503).json({
+      message:
+        "Order functionality is temporarily unavailable. Please try again later.",
+    });
+  });
+}
+
+// Error handling middleware
+app.use(notFound);
+app.use(errorHandler);
+
+// Only start the server in traditional Node.js environments (not serverless)
+const isVercel = process.env.VERCEL === "1";
+
+if (!isVercel && process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+} else {
+  console.log("Running in serverless mode - no server.listen() called");
+}
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {

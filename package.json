@@ -1,0 +1,12 @@
+{
+  "name": "dineeats",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "start": "cd server && node server.js",
+    "vercel-build": "echo 'Building for Vercel'"
+  }
+}
