@@ -1,11 +1,14 @@
 import axios from "axios";
 
+// Debug: Log environment variable
+console.log("BACKEND_URL env variable:", import.meta.env.BACKEND_URL);
+
 // Use environment variable if available, otherwise fallback to defaults
 const API_URL =
-  import.meta.env.VITE_API_URL ||
+  (import.meta.env.BACKEND_URL ? `${import.meta.env.BACKEND_URL}/api` : null) ||
   (window.location.hostname === "localhost"
     ? "http://localhost:5000/api"
-    : "https://dine-eats-backend.vercel.app/api");
+    : "https://dineeats.onrender.com/api");
 
 console.log("Using API URL:", API_URL);
 

@@ -24,7 +24,7 @@ app.use((req, res, next) => {
 // Middleware
 app.use(
   cors({
-    origin: "*", // Allow all origins
+    origin: process.env.FRONTEND_URL || "*", // Use frontend URL from env or fallback to all origins
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
