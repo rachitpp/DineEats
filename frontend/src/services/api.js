@@ -48,6 +48,17 @@ export const createOrder = async (orderData) => {
     const response = await api.post("/orders", orderData);
     return response.data;
   } catch (error) {
+    // Check if it's a 503 Service Unavailable error (PostgreSQL not connected)
+    if (error.response && error.response.status === 503) {
+      console.error(
+        "Database service unavailable:",
+        error.response.data?.message ||
+          "Order functionality is temporarily unavailable"
+      );
+      throw new Error(
+        "Order system is temporarily unavailable. The database might be starting up or under maintenance. Please try again in a few minutes."
+      );
+    }
     console.error("Error creating order:", error);
     throw error;
   }
