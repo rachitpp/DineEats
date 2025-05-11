@@ -88,6 +88,15 @@ const setupDatabases = async () => {
       try {
         await sequelize.sync({ alter: true });
         console.log("PostgreSQL database synced");
+
+        // IMPORTANT: Rebuild the order routes now that we're connected
+        // Need to remove the old route handler that returns 503
+        console.log("Rebuilding order routes with the actual implementation");
+        app._router.stack = app._router.stack.filter(
+          (layer) => !(layer.route && layer.route.path === "/api/orders")
+        );
+        app.use("/api/orders", require("./routes/orderRoutes"));
+        console.log("Order routes successfully rebuilt");
       } catch (syncError) {
         console.error("Error syncing PostgreSQL schema:", syncError);
       }
@@ -137,15 +146,31 @@ app.get("/api/status", (req, res) => {
   });
 });
 
+// Debug route for orders
+app.get("/api/orders-debug", (req, res) => {
+  res.json({
+    postgresConnected,
+    message: postgresConnected
+      ? "PostgreSQL is connected, orders should be working"
+      : "PostgreSQL is not connected, orders are unavailable",
+  });
+});
+
 // API routes
 app.use("/api/menu-items", require("./routes/menuItemRoutes"));
 
 // Orders route - with fallback if PostgreSQL isn't available
+console.log(
+  "Configuring order routes, PostgreSQL connected:",
+  postgresConnected
+);
 if (postgresConnected) {
   // If PostgreSQL is connected, use the order routes
+  console.log("Using actual order routes");
   app.use("/api/orders", require("./routes/orderRoutes"));
 } else {
   // Fallback route for orders if PostgreSQL is not available
+  console.log("Using fallback order routes that return 503");
   app.use("/api/orders", (req, res) => {
     return res.status(503).json({
       message:
