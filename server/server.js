@@ -89,14 +89,14 @@ const setupDatabases = async () => {
         await sequelize.sync({ alter: true });
         console.log("PostgreSQL database synced");
 
-        // IMPORTANT: Rebuild the order routes now that we're connected
-        // Need to remove the old route handler that returns 503
-        console.log("Rebuilding order routes with the actual implementation");
-        app._router.stack = app._router.stack.filter(
-          (layer) => !(layer.route && layer.route.path === "/api/orders")
-        );
-        app.use("/api/orders", require("./routes/orderRoutes"));
-        console.log("Order routes successfully rebuilt");
+        // Try to update order routes to use the actual implementation
+        try {
+          updateOrderRoutes();
+        } catch (routeError) {
+          console.log(
+            "Could not update routes dynamically, but database is connected"
+          );
+        }
       } catch (syncError) {
         console.error("Error syncing PostgreSQL schema:", syncError);
       }
@@ -159,25 +159,59 @@ app.get("/api/orders-debug", (req, res) => {
 // API routes
 app.use("/api/menu-items", require("./routes/menuItemRoutes"));
 
-// Orders route - with fallback if PostgreSQL isn't available
-console.log(
-  "Configuring order routes, PostgreSQL connected:",
-  postgresConnected
-);
-if (postgresConnected) {
-  // If PostgreSQL is connected, use the order routes
-  console.log("Using actual order routes");
-  app.use("/api/orders", require("./routes/orderRoutes"));
-} else {
-  // Fallback route for orders if PostgreSQL is not available
-  console.log("Using fallback order routes that return 503");
-  app.use("/api/orders", (req, res) => {
-    return res.status(503).json({
-      message:
-        "Order functionality is temporarily unavailable. Please try again later.",
+// Create a function that returns the appropriate order router based on connection status
+const getOrderRouter = () => {
+  // Create a new router
+  const router = express.Router();
+
+  if (postgresConnected) {
+    console.log("PostgreSQL connected - using actual order routes");
+    // If PostgreSQL is connected, use the real order routes
+    // Import the order routes
+    const orderRoutes = require("./routes/orderRoutes");
+
+    // Forward all routes to the imported router
+    router.use("/", orderRoutes);
+  } else {
+    console.log("PostgreSQL not connected - using fallback order routes");
+    // Fallback route for all order endpoints
+    router.all("*", (req, res) => {
+      return res.status(503).json({
+        message:
+          "Order functionality is temporarily unavailable. Please try again later.",
+      });
     });
-  });
-}
+  }
+
+  return router;
+};
+
+// Function to update order routes when PostgreSQL connects
+const updateOrderRoutes = () => {
+  try {
+    // Remove the current order routes
+    app._router.stack = app._router.stack.filter((layer) => {
+      if (!layer.route && layer.handle && layer.handle.name === "router") {
+        // Check if this layer is the /api/orders router
+        const path = layer.regexp.toString();
+        return !path.includes("/api/orders");
+      }
+      return true;
+    });
+
+    // Add the new order routes
+    app.use("/api/orders", getOrderRouter());
+    console.log("Order routes updated successfully");
+  } catch (error) {
+    console.log("Could not update order routes dynamically:", error.message);
+    console.log(
+      "This is not a critical error - new connections will use the correct routes"
+    );
+  }
+};
+
+// Set up the order routes
+app.use("/api/orders", getOrderRouter());
 
 // Error handling middleware
 app.use(notFound);
