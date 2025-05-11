@@ -88,15 +88,6 @@ const setupDatabases = async () => {
       try {
         await sequelize.sync({ alter: true });
         console.log("PostgreSQL database synced");
-
-        // Try to update order routes to use the actual implementation
-        try {
-          updateOrderRoutes();
-        } catch (routeError) {
-          console.log(
-            "Could not update routes dynamically, but database is connected"
-          );
-        }
       } catch (syncError) {
         console.error("Error syncing PostgreSQL schema:", syncError);
       }
@@ -123,7 +114,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Database status check endpoint
+// Status endpoint to check database connections
 app.get("/api/status", (req, res) => {
   res.json({
     time: new Date().toISOString(),
@@ -132,22 +123,15 @@ app.get("/api/status", (req, res) => {
     },
     postgres: {
       connected: postgresConnected,
-      // Only add configuration checks if not connected
-      config: !postgresConnected
-        ? {
-            uriProvided: !!process.env.POSTGRES_URI,
-            hostProvided: !!process.env.POSTGRES_HOST,
-            dbProvided: !!process.env.POSTGRES_DB,
-            userProvided: !!process.env.POSTGRES_USER,
-            passwordProvided: !!process.env.POSTGRES_PASSWORD,
-          }
-        : undefined,
     },
   });
 });
 
-// Debug route for orders
-app.get("/api/orders-debug", (req, res) => {
+// API routes - menu items
+app.use("/api/menu-items", require("./routes/menuItemRoutes"));
+
+// Debug route for orders to check connection status
+app.get("/api/orders/debug", (req, res) => {
   res.json({
     postgresConnected,
     message: postgresConnected
@@ -156,62 +140,28 @@ app.get("/api/orders-debug", (req, res) => {
   });
 });
 
-// API routes
-app.use("/api/menu-items", require("./routes/menuItemRoutes"));
+// For all order routes, check if PostgreSQL is connected
+app.use("/api/orders", (req, res, next) => {
+  // Don't intercept the debug route
+  if (req.path === "/debug") {
+    return next();
+  }
 
-// Create a function that returns the appropriate order router based on connection status
-const getOrderRouter = () => {
-  // Create a new router
-  const router = express.Router();
-
+  // For all other routes, check PostgreSQL connection
   if (postgresConnected) {
-    console.log("PostgreSQL connected - using actual order routes");
-    // If PostgreSQL is connected, use the real order routes
-    // Import the order routes
-    const orderRoutes = require("./routes/orderRoutes");
-
-    // Forward all routes to the imported router
-    router.use("/", orderRoutes);
+    // Forward to real order routes if connected
+    next();
   } else {
-    console.log("PostgreSQL not connected - using fallback order routes");
-    // Fallback route for all order endpoints
-    router.all("*", (req, res) => {
-      return res.status(503).json({
-        message:
-          "Order functionality is temporarily unavailable. Please try again later.",
-      });
+    // Return 503 if not connected
+    return res.status(503).json({
+      message:
+        "Order functionality is temporarily unavailable. Please try again later.",
     });
   }
+});
 
-  return router;
-};
-
-// Function to update order routes when PostgreSQL connects
-const updateOrderRoutes = () => {
-  try {
-    // Remove the current order routes
-    app._router.stack = app._router.stack.filter((layer) => {
-      if (!layer.route && layer.handle && layer.handle.name === "router") {
-        // Check if this layer is the /api/orders router
-        const path = layer.regexp.toString();
-        return !path.includes("/api/orders");
-      }
-      return true;
-    });
-
-    // Add the new order routes
-    app.use("/api/orders", getOrderRouter());
-    console.log("Order routes updated successfully");
-  } catch (error) {
-    console.log("Could not update order routes dynamically:", error.message);
-    console.log(
-      "This is not a critical error - new connections will use the correct routes"
-    );
-  }
-};
-
-// Set up the order routes
-app.use("/api/orders", getOrderRouter());
+// Always set up order routes, but they'll only be used if PostgreSQL is connected
+app.use("/api/orders", require("./routes/orderRoutes"));
 
 // Error handling middleware
 app.use(notFound);
