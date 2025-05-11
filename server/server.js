@@ -24,7 +24,11 @@ app.use((req, res, next) => {
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*", // Use frontend URL from env or fallback to all origins
+    origin: [
+      process.env.FRONTEND_URL,
+      "https://dine-eats.vercel.app",
+      "https://dine-eats-1nsj.vercel.app",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
