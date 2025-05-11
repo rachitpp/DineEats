@@ -12,7 +12,11 @@ const MenuItem = ({ item }) => {
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "";
     if (imagePath.startsWith("http")) return imagePath;
-    return `http://localhost:5000${imagePath}`;
+
+    // Get the API URL base from our API configuration
+    const apiUrlBase =
+      import.meta.env.BACKEND_URL || "https://dineeats.onrender.com";
+    return `${apiUrlBase}${imagePath}`;
   };
 
   const handleAddToCart = () => {
