@@ -34,6 +34,11 @@ app.use(express.urlencoded({ extended: false }));
 // Serve static files from the public directory
 app.use("/static", express.static("public"));
 
+// Handle favicon requests
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end(); // No content response
+});
+
 // Setup database connections immediately but don't wait for them
 // This allows serverless functions to start handling requests right away
 const setupDatabases = async () => {
