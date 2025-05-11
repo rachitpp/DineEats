@@ -52,6 +52,32 @@ const setupDatabases = async () => {
     mongoConnected = true;
     console.log("MongoDB connected");
 
+    // Log database environment variables (without sensitive info)
+    console.log("Checking PostgreSQL configuration...");
+    if (process.env.POSTGRES_URI) {
+      console.log("POSTGRES_URI is set");
+    } else {
+      console.log(
+        `POSTGRES_HOST: ${process.env.POSTGRES_HOST ? "Set" : "Not set"}`
+      );
+      console.log(
+        `POSTGRES_DB: ${process.env.POSTGRES_DB ? "Set" : "Not set"}`
+      );
+      console.log(
+        `POSTGRES_USER: ${process.env.POSTGRES_USER ? "Set" : "Not set"}`
+      );
+      console.log(
+        `POSTGRES_PASSWORD: ${
+          process.env.POSTGRES_PASSWORD ? "Set but not shown" : "Not set"
+        }`
+      );
+      console.log(
+        `POSTGRES_PORT: ${
+          process.env.POSTGRES_PORT || "Not set (will use default 5432)"
+        }`
+      );
+    }
+
     // Try to connect to PostgreSQL, but don't stop the server if it fails
     try {
       await connectPostgreSQL();
@@ -68,7 +94,7 @@ const setupDatabases = async () => {
     } catch (pgError) {
       console.error(
         "PostgreSQL connection error - some features may be unavailable:",
-        pgError
+        pgError.message
       );
     }
   } catch (error) {
@@ -85,6 +111,29 @@ app.get("/", (req, res) => {
     message: "API is running...",
     mongoDBConnected: mongoConnected,
     postgresConnected: postgresConnected,
+  });
+});
+
+// Database status check endpoint
+app.get("/api/status", (req, res) => {
+  res.json({
+    time: new Date().toISOString(),
+    mongodb: {
+      connected: mongoConnected,
+    },
+    postgres: {
+      connected: postgresConnected,
+      // Only add configuration checks if not connected
+      config: !postgresConnected
+        ? {
+            uriProvided: !!process.env.POSTGRES_URI,
+            hostProvided: !!process.env.POSTGRES_HOST,
+            dbProvided: !!process.env.POSTGRES_DB,
+            userProvided: !!process.env.POSTGRES_USER,
+            passwordProvided: !!process.env.POSTGRES_PASSWORD,
+          }
+        : undefined,
+    },
   });
 });
 
