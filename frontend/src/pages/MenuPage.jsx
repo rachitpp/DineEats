@@ -1,32 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { getMenuItems } from "../services/api";
+import React, { useState } from "react";
 import MenuItem from "../components/MenuItem";
 import CategoryFilter from "../components/CategoryFilter";
+import { useMenu } from "../context/MenuContext";
 
 const MenuPage = () => {
-  const [menuItems, setMenuItems] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { menuItems, loading, error, activeCategory, setActiveCategory } =
+    useMenu();
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      try {
-        setLoading(true);
-        const data = await getMenuItems(activeCategory);
-        setMenuItems(data);
-        setError(null);
-      } catch (err) {
-        setError("Failed to load menu items. Please try again later.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMenuItems();
-  }, [activeCategory]);
 
   // Filter items based on search term
   const filteredItems = menuItems.filter(
@@ -36,46 +16,39 @@ const MenuPage = () => {
   );
 
   return (
-    <div className="bg-gradient-to-b from-[#f8f9fa] to-[#edf0f2] min-h-screen py-8 bg-texture">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Hero Section */}
-        <div className="text-center mb-10 bg-white rounded-2xl p-10 shadow-sm">
-          <div className="inline-flex mb-4">
-            <span className="bg-[#27ae60]/10 text-[#27ae60] text-sm font-semibold px-3 py-1 rounded-full">
-              Traditional Indian Cuisine
-            </span>
-          </div>
-          <h1 className="text-5xl font-extrabold text-[#1a1a1a] mb-4 tracking-tight">
-            Discover Our <span className="text-gradient">Delicious Menu</span>
+    <div className="bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Page Title */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+            Our Menu
           </h1>
-          <p className="text-gray-700 text-base font-medium max-w-2xl mx-auto leading-relaxed mb-6">
-            Explore our delicious selection of dishes, crafted with the finest
-            ingredients and served with love. Something special awaits you!
+          <p className="mt-2 text-lg text-gray-600">
+            Discover our delicious dishes prepared with fresh ingredients
           </p>
+        </div>
 
-          {/* Search Bar */}
-          <div className="max-w-md mx-auto relative">
+        {/* Search Bar */}
+        <div className="max-w-lg mx-auto mb-8">
+          <div className="relative">
             <input
               type="text"
-              placeholder="Search for dishes..."
+              className="w-full p-4 pl-12 pr-10 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#27ae60] focus:border-transparent shadow-sm transition-all duration-200 focus:outline-none"
+              placeholder="Search for a dish..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-5 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#27ae60] shadow-sm"
             />
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+              🔍
+            </span>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
